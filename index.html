@@ -202,8 +202,8 @@
   .form-group { display: flex; flex-direction: column; gap: 4px; }
 
   /* ─── POS Layout ─── */
-  .pos-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; height: calc(100vh - 120px); }
-  .pos-items { overflow-y: auto; }
+  .pos-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; min-height: 0; }
+  .pos-items { overflow-y: visible; }
   .pos-cart { display: flex; flex-direction: column; gap: 14px; }
   .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .pos-item-card {
@@ -222,7 +222,7 @@
 
   /* ─── Cart ─── */
   .cart-header { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .cart-items { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .cart-items { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
   .cart-item {
     background: var(--surface2);
     border-radius: var(--radius);
@@ -407,9 +407,9 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('inventory')"><span class="tab-icon">📦</span> Inventory</div>
-  <div class="tab" onclick="switchTab('pos')"><span class="tab-icon">🛒</span> Billing</div>
-  <div class="tab" onclick="switchTab('summary')"><span class="tab-icon">📊</span> Summary</div>
+  <div class="tab active" onclick="switchTab(event,'inventory')"><span class="tab-icon">📦</span> Inventory</div>
+  <div class="tab" onclick="switchTab(event,'pos')"><span class="tab-icon">🛒</span> Billing</div>
+  <div class="tab" onclick="switchTab(event,'summary')"><span class="tab-icon">📊</span> Summary</div>
 </div>
 
 <!-- ═══════════════════════════════════ INVENTORY ═══════════════════════════════════ -->
@@ -667,13 +667,13 @@ let store = loadStore();
 
 // ═══════════════════ TABS ═══════════════════
 
-function switchTab(tab) {
+function switchTab(evt, tab) {
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('pane-' + tab).classList.add('active');
-  event.currentTarget.classList.add('active');
+  evt.currentTarget.classList.add('active');
   if (tab === 'inventory') renderInventory();
-  if (tab === 'pos') { renderPOSItems(); populateCatFilter(); }
+  if (tab === 'pos') { populateCatFilter(); renderPOSItems(); renderCart(); }
   if (tab === 'summary') renderSummary();
 }
 
@@ -845,11 +845,12 @@ function renderPOSItems() {
     return;
   }
   grid.innerHTML = items.map(i => `
-    <div class="pos-item-card" onclick="addToCart('${i.sku}')">
+    <div class="pos-item-card" data-sku="${i.sku}">
       <div class="name">${i.name}</div>
       <div class="sku">${i.sku}</div>
       <div class="price">₹${i.price.toFixed(2)}</div>
       <div class="stock ${i.qty <= i.low ? 'low-stock' : ''}">Stock: ${i.qty}</div>
+      <div style="margin-top:8px"><button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" data-sku="${i.sku}">+ Add to Cart</button></div>
     </div>
   `).join('');
 }
@@ -1222,6 +1223,12 @@ function downloadFile(filename, content, mimeType) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+// Delegated click on POS grid
+document.getElementById('pos-grid').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-sku]');
+  if (btn) addToCart(btn.dataset.sku);
+});
+
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
@@ -1264,6 +1271,9 @@ if (!store.items.length) {
 }
 
 renderInventory();
+populateCatFilter();
+renderPOSItems();
+renderCart();
 </script>
 </body>
 </html>
